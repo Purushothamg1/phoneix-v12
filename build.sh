@@ -23,4 +23,8 @@ npm install --production=false
 echo "==> Building frontend..."
 NODE_ENV=production npm run build
 
+echo "==> Seeding default admin user and settings..."
+cd /home/runner/workspace/backend
+npx ts-node src/config/seed.ts
+
 echo "Build complete!"
