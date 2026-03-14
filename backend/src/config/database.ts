@@ -16,6 +16,4 @@ if (process.env.NODE_ENV !== 'production') {
   global.__prisma = prisma;
 }
 
-prisma.$on('beforeExit', async () => {
-  logger.info('Prisma client disconnecting...');
-});
+// Note: $on('beforeExit') removed — not supported in Prisma 5+ client type

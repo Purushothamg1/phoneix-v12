@@ -23,7 +23,7 @@ export default function ReportsPage() {
   const { data: finData } = useSWR(tab==='financial' ? `/reports/financial?from=${from}&to=${to}` : null, fetcher);
 
   const exportExcel = () => {
-    window.open(`${process.env.NEXT_PUBLIC_API_URL}/api/import-export/reports/sales/export?from=${from}&to=${to}`, '_blank');
+    window.open(`/api/import-export/reports/sales/export?from=${from}&to=${to}`, '_blank');
   };
 
   const TABS = [

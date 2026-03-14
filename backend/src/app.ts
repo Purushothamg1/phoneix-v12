@@ -58,7 +58,10 @@ const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.some((o) => origin === o || origin.endsWith('.replit.dev') || origin.endsWith('.replit.app'))) {
+      return cb(null, true);
+    }
     cb(new Error(`Origin ${origin} not allowed by CORS`));
   },
   credentials: true,

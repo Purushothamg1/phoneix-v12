@@ -163,7 +163,7 @@ export default function SettingsPage() {
               {form.logo_url && (
                 <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
                   <img
-                    src={`${process.env.NEXT_PUBLIC_API_URL}${form.logo_url}`}
+                    src={form.logo_url}
                     alt="Business logo"
                     className="h-16 object-contain"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}

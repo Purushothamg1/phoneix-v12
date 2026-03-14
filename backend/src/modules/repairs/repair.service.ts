@@ -138,9 +138,15 @@ export const repairService = {
     if (existing.status === 'DELIVERED' && data.status && data.status !== 'DELIVERED') {
       throw new ValidationError('Cannot revert a delivered repair job');
     }
+    const updateData: Record<string, unknown> = {};
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.repairNotes !== undefined) updateData.repairNotes = data.repairNotes;
+    if (data.technicianId !== undefined) updateData.technicianId = data.technicianId;
+    if (data.finalCost !== undefined) updateData.finalCost = data.finalCost;
+    if (data.estimatedCost !== undefined) updateData.estimatedCost = data.estimatedCost;
     return prisma.repairJob.update({
       where: { id },
-      data,
+      data: updateData as Parameters<typeof prisma.repairJob.update>[0]['data'],
       include: {
         customer: true,
         technician: { select: { id: true, name: true } },

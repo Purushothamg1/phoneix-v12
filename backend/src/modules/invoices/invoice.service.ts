@@ -174,7 +174,10 @@ export const invoiceService = {
     if (invoice.status === 'PAID' && data.discount !== undefined) {
       throw new ValidationError('Cannot modify discount on a fully paid invoice');
     }
-    return prisma.invoice.update({ where: { id }, data });
+    const updateData: Record<string, unknown> = {};
+    if (data.discount !== undefined) updateData.discount = data.discount;
+    if (data.status !== undefined) updateData.status = data.status;
+    return prisma.invoice.update({ where: { id }, data: updateData as Parameters<typeof prisma.invoice.update>[0]['data'] });
   },
 
   async cancel(id: string) {

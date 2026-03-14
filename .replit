@@ -13,3 +13,51 @@ FRONTEND_URL = "https://99cbe130-d83d-4164-bd0d-3f8048768fe6-00-1xdcgqv1f2who.sp
 NEXT_PUBLIC_API_URL = "https://99cbe130-d83d-4164-bd0d-3f8048768fe6-00-1xdcgqv1f2who.spock.replit.dev/api"
 APP_URL = "https://99cbe130-d83d-4164-bd0d-3f8048768fe6-00-1xdcgqv1f2who.spock.replit.dev"
 PORT = "3001"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Backend API"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd /home/runner/workspace/frontend && npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow]]
+name = "Backend API"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd /home/runner/workspace/backend && npm run start"
+waitForPort = 3001
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
+
+[[ports]]
+localPort = 5000
+externalPort = 80
