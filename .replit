@@ -1,0 +1,15 @@
+modules = ["nodejs-20", "bash", "web"]
+[agent]
+expertMode = true
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+NODE_ENV = "development"
+FRONTEND_URL = "https://99cbe130-d83d-4164-bd0d-3f8048768fe6-00-1xdcgqv1f2who.spock.replit.dev"
+NEXT_PUBLIC_API_URL = "https://99cbe130-d83d-4164-bd0d-3f8048768fe6-00-1xdcgqv1f2who.spock.replit.dev/api"
+APP_URL = "https://99cbe130-d83d-4164-bd0d-3f8048768fe6-00-1xdcgqv1f2who.spock.replit.dev"
+PORT = "3001"
