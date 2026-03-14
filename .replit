@@ -8,11 +8,11 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-NODE_ENV = "development"
 FRONTEND_URL = "https://99cbe130-d83d-4164-bd0d-3f8048768fe6-00-1xdcgqv1f2who.spock.replit.dev"
 NEXT_PUBLIC_API_URL = "https://99cbe130-d83d-4164-bd0d-3f8048768fe6-00-1xdcgqv1f2who.spock.replit.dev/api"
 APP_URL = "https://99cbe130-d83d-4164-bd0d-3f8048768fe6-00-1xdcgqv1f2who.spock.replit.dev"
 PORT = "3001"
+NODE_ENV = "production"
 
 [workflows]
 runButton = "Project"
@@ -61,3 +61,8 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["bash", "/home/runner/workspace/start.sh"]
+build = ["bash", "/home/runner/workspace/build.sh"]
