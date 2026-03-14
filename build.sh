@@ -11,7 +11,9 @@ npm run build
 echo "==> Generating Prisma client..."
 npx prisma generate
 
-echo "==> Running database migrations..."
+echo "==> Applying database migrations..."
+# Baseline the initial migration if schema already exists (shared dev/prod database)
+npx prisma migrate resolve --applied "0001_init" 2>/dev/null || true
 npx prisma migrate deploy
 
 echo "==> Installing frontend dependencies..."
@@ -19,6 +21,6 @@ cd /home/runner/workspace/frontend
 npm install --production=false
 
 echo "==> Building frontend..."
-npm run build
+NODE_ENV=production npm run build
 
 echo "Build complete!"

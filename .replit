@@ -63,6 +63,6 @@ localPort = 5000
 externalPort = 80
 
 [deployment]
-deploymentTarget = "autoscale"
-run = ["bash", "/home/runner/workspace/start.sh"]
-build = ["bash", "/home/runner/workspace/build.sh"]
+deploymentTarget = "cloudrun"
+run = ["sh", "-c", "bash /home/runner/workspace/start.sh"]
+build = ["sh", "-c", "bash /home/runner/workspace/build.sh"]
