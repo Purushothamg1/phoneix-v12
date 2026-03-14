@@ -20,8 +20,13 @@ backend/    — Express API (src/modules/, src/config/, src/shared/)
 
 Two workflows run simultaneously:
 
-1. **Start application** — `cd frontend && npm run dev` (port 5000, webview)
+1. **Start application** — `cd frontend && npm run start` (port 5000, webview) — runs in production mode
 2. **Backend API** — `cd backend && npm run start` (port 3001, console)
+
+> Note: The frontend runs in production mode (`next start`) rather than dev mode (`next dev`).
+> Next.js dev mode makes internal RSC fetch requests to `localhost:5000` which isn't accessible
+> through Replit's proxy, causing a blank screen. After any code changes to the frontend,
+> rebuild with: `cd frontend && npm run build`
 
 Frontend proxies all `/api/*` and `/uploads/*` requests to the backend via Next.js rewrites (configured in `frontend/next.config.js`). This eliminates CORS issues — all traffic goes through a single origin.
 
