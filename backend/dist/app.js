@@ -29,6 +29,9 @@ const upload_routes_1 = require("./modules/upload/upload.routes");
 const importExport_routes_1 = require("./modules/import-export/importExport.routes");
 const audit_routes_1 = require("./modules/audit/audit.routes");
 const app = (0, express_1.default)();
+// ── Trust proxy (required for Replit/cloud deployments behind a load balancer) ─
+// Allows express-rate-limit and req.ip to read the real client IP from X-Forwarded-For
+app.set('trust proxy', 1);
 // ── Request ID (attach before all other middleware) ───────────
 app.use(requestId_1.requestId);
 // ── Security Headers ──────────────────────────────────────────

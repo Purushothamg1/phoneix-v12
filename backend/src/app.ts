@@ -26,6 +26,10 @@ import { auditRouter } from './modules/audit/audit.routes';
 
 const app = express();
 
+// ── Trust proxy (required for Replit/cloud deployments behind a load balancer) ─
+// Allows express-rate-limit and req.ip to read the real client IP from X-Forwarded-For
+app.set('trust proxy', 1);
+
 // ── Request ID (attach before all other middleware) ───────────
 app.use(requestId);
 
