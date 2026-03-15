@@ -6,7 +6,8 @@ import { useState } from 'react';
 import AppShell from '@/components/layout/AppShell';
 import { StatusBadge, Modal, FormField, Spinner } from '@/components/ui';
 import { formatCurrency, formatDate, getErrorMessage } from '@/lib/utils';
-import { FileDown, Send, Pencil, ArrowLeft, RefreshCw, ExternalLink } from 'lucide-react';
+import { FileDown, Send, Pencil, ArrowLeft, RefreshCw, FileText } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Link from 'next/link';
 
@@ -17,14 +18,38 @@ interface ShareResult { pdfUrl: string; pdfName: string; whatsappUrl: string; ph
 
 export default function RepairDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { data: repair, isLoading, mutate } = useSWR(`/repairs/${id}`, fetcher);
   const [editModal, setEditModal] = useState(false);
   const [form, setForm] = useState({ status: '', repairNotes: '', finalCost: '' });
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
   const [sharePreview, setSharePreview] = useState<ShareResult | null>(null);
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+  const triggerDownload = (url: string, filename: string) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'jobcard.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const openWhatsAppWithDownload = (whatsappUrl: string, pdfUrl: string, pdfName: string) => {
+    if (pdfUrl) triggerDownload(pdfUrl, pdfName);
+    setTimeout(() => window.open(whatsappUrl, '_blank', 'noopener,noreferrer'), 400);
+  };
+
+  const handleCreateInvoice = async () => {
+    setCreatingInvoice(true);
+    try {
+      const { data: invoice } = await api.post(`/repairs/${id}/create-invoice`);
+      toast.success(`Invoice ${invoice.number} created!`);
+      router.push(`/invoices/${invoice.id}`);
+    } catch (err) { toast.error(getErrorMessage(err)); }
+    finally { setCreatingInvoice(false); }
+  };
 
   const openEdit = () => {
     setForm({ status: repair.status, repairNotes: repair.repairNotes || '', finalCost: repair.finalCost ? String(repair.finalCost) : '' });
@@ -79,7 +104,11 @@ export default function RepairDetailPage() {
           <StatusBadge status={repair.status} />
           <button onClick={openEdit} className="btn-secondary btn-sm"><Pencil className="w-3.5 h-3.5" /> Update Status</button>
           {repair.pdfUrl ? (
-            <a href={`${apiBase}${repair.pdfUrl}`} target="_blank" rel="noreferrer" className="btn-secondary btn-sm">
+            <a
+              href={repair.pdfUrl}
+              download={repair.pdfUrl.split('/').pop() || 'jobcard.pdf'}
+              className="btn-secondary btn-sm"
+            >
               <FileDown className="w-3.5 h-3.5" /> Job Card PDF
             </a>
           ) : (
@@ -91,6 +120,17 @@ export default function RepairDetailPage() {
           <button onClick={handleWhatsApp} className="btn-secondary btn-sm text-green-700 border-green-200 hover:bg-green-50">
             <Send className="w-3.5 h-3.5" /> WhatsApp
           </button>
+          {['READY', 'DELIVERED'].includes(repair.status) && (
+            <button
+              onClick={handleCreateInvoice}
+              disabled={creatingInvoice}
+              className="btn-primary btn-sm"
+              title="Create an invoice for this repair job"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              {creatingInvoice ? 'Creating…' : 'Create Invoice'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -202,29 +242,35 @@ export default function RepairDetailPage() {
               <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">{sharePreview.message}</pre>
             </div>
             {sharePreview.pdfUrl && (
-              <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+              <div className="flex items-center gap-3 bg-blue-50 rounded-lg p-3">
                 <FileDown className="w-4 h-4 text-blue-600 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{sharePreview.pdfName}</p>
-                  <p className="text-xs text-gray-500">Attach this PDF after WhatsApp opens</p>
+                  <p className="text-xs text-gray-500">PDF downloads automatically when you open WhatsApp</p>
                 </div>
-                <a href={sharePreview.pdfUrl} target="_blank" rel="noreferrer" className="btn-secondary btn-sm flex-shrink-0">
-                  <ExternalLink className="w-3 h-3" /> Open
-                </a>
+                <button
+                  onClick={() => triggerDownload(sharePreview.pdfUrl, sharePreview.pdfName)}
+                  className="btn-secondary btn-sm flex-shrink-0"
+                >
+                  <FileDown className="w-3 h-3" /> Save
+                </button>
               </div>
             )}
-            <div className="bg-yellow-50 rounded-lg p-3 text-xs text-yellow-800">
-              <strong>How to share:</strong> Click "Open WhatsApp" — the message is pre-filled. Attach the PDF and hit send.
+            <div className="bg-green-50 rounded-lg p-3 text-xs text-green-800">
+              <strong>Tip:</strong> Clicking "Open WhatsApp" automatically downloads the PDF. Attach it from your files in WhatsApp and hit send.
             </div>
             <div className="flex gap-3 justify-end pt-2">
               <button onClick={() => setSharePreview(null)} className="btn-secondary">Close</button>
               {sharePreview.pdfUrl && (
-                <a href={sharePreview.pdfUrl} target="_blank" rel="noreferrer" className="btn-secondary">
+                <button
+                  onClick={() => triggerDownload(sharePreview.pdfUrl, sharePreview.pdfName)}
+                  className="btn-secondary"
+                >
                   <FileDown className="w-3.5 h-3.5" /> Download PDF
-                </a>
+                </button>
               )}
               <button
-                onClick={() => { window.open(sharePreview.whatsappUrl, '_blank', 'noopener,noreferrer'); setSharePreview(null); }}
+                onClick={() => { openWhatsAppWithDownload(sharePreview.whatsappUrl, sharePreview.pdfUrl, sharePreview.pdfName); setSharePreview(null); }}
                 className="btn-primary bg-green-600 hover:bg-green-700 focus:ring-green-500"
               >
                 <Send className="w-3.5 h-3.5" /> Open WhatsApp

@@ -301,11 +301,9 @@ importExportRouter.post('/prepare-send', async (req: Request, res: Response, nex
     // Build wa.me URL - phone must be E.164 without +
     const cleanPhone = phone.replace(/^\+/, '');
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-    const appUrl = process.env.APP_URL || process.env.FRONTEND_URL || '';
-    const pdfDirectUrl = appUrl ? `${appUrl}${pdfUrl}` : pdfUrl;
 
     res.json({
-      pdfUrl: pdfDirectUrl,
+      pdfUrl,
       pdfName,
       phone,
       message,

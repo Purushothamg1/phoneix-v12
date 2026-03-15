@@ -60,7 +60,7 @@ export default function PaymentsPage() {
     finally { setRefundLoading(false); setRefunding(null); }
   }
 
-  const payments = data || [];
+  const payments: any[] = Array.isArray(data) ? data : (data?.data ?? []);
   const total = payments.filter((p: any) => !p.refunded).reduce((sum: number, p: any) => sum + Number(p.amount), 0);
 
   return (

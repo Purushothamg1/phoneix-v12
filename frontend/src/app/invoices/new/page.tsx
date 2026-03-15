@@ -2,13 +2,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, Search } from 'lucide-react';
+import { Plus, Trash2, UserPlus, Package } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
-import { PageHeader, FormField } from '@/components/ui';
+import { PageHeader, FormField, Modal } from '@/components/ui';
 import { formatCurrency, getErrorMessage } from '@/lib/utils';
 import api from '@/lib/api';
 
 interface LineItem { productId: string; description: string; qty: number; unitPrice: number; tax: number; }
+
+const EMPTY_CUSTOMER = { name: '', phone: '', email: '', address: '' };
+const EMPTY_PRODUCT = { name: '', sku: '', description: '', sellingPrice: '', purchasePrice: '', stockQty: '0', minStockLevel: '0', unit: 'pcs' };
 
 export default function NewInvoicePage() {
   const router = useRouter();
@@ -20,10 +23,55 @@ export default function NewInvoicePage() {
   const [saving, setSaving] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
 
-  useEffect(() => {
-    api.get('/customers?limit=100').then((r) => setCustomers(r.data.data));
-    api.get('/products?limit=200').then((r) => setProducts(r.data.data));
-  }, []);
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [newCustomer, setNewCustomer] = useState(EMPTY_CUSTOMER);
+  const [savingCustomer, setSavingCustomer] = useState(false);
+
+  const [showNewProduct, setShowNewProduct] = useState(false);
+  const [newProduct, setNewProduct] = useState(EMPTY_PRODUCT);
+  const [savingProduct, setSavingProduct] = useState(false);
+
+  const loadCustomers = () => api.get('/customers?limit=200').then((r) => setCustomers(r.data.data || []));
+  const loadProducts = () => api.get('/products?limit=500').then((r) => setProducts(r.data.data || []));
+
+  useEffect(() => { loadCustomers(); loadProducts(); }, []);
+
+  const handleCreateCustomer = async () => {
+    if (!newCustomer.name.trim() || !newCustomer.phone.trim()) {
+      toast.error('Name and phone are required'); return;
+    }
+    setSavingCustomer(true);
+    try {
+      const { data } = await api.post('/customers', newCustomer);
+      toast.success(`Customer ${data.name} added!`);
+      await loadCustomers();
+      setCustomerId(data.id);
+      setShowNewCustomer(false);
+      setNewCustomer(EMPTY_CUSTOMER);
+    } catch (err) { toast.error(getErrorMessage(err)); }
+    finally { setSavingCustomer(false); }
+  };
+
+  const handleCreateProduct = async () => {
+    if (!newProduct.name.trim() || !newProduct.sku.trim()) {
+      toast.error('Name and SKU are required'); return;
+    }
+    setSavingProduct(true);
+    try {
+      const { data } = await api.post('/products', {
+        ...newProduct,
+        sellingPrice: parseFloat(newProduct.sellingPrice) || 0,
+        purchasePrice: parseFloat(newProduct.purchasePrice) || 0,
+        stockQty: parseInt(newProduct.stockQty) || 0,
+        minStockLevel: parseInt(newProduct.minStockLevel) || 0,
+      });
+      toast.success(`Product ${data.name} added!`);
+      await loadProducts();
+      setShowNewProduct(false);
+      setNewProduct(EMPTY_PRODUCT);
+    } catch (err) { toast.error(getErrorMessage(err)); }
+    finally { setSavingProduct(false); }
+  };
 
   const filteredCustomers = customers.filter((c) =>
     c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
@@ -76,12 +124,22 @@ export default function NewInvoicePage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Customer */}
           <div className="card">
-            <h2 className="font-semibold mb-4">Customer</h2>
-            <input className="input mb-2" placeholder="Search customer..." value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} />
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold">Customer</h2>
+              <button onClick={() => setShowNewCustomer(true)} className="btn-secondary btn-sm text-blue-600 border-blue-200 hover:bg-blue-50">
+                <UserPlus className="w-3.5 h-3.5" /> New Customer
+              </button>
+            </div>
+            <input className="input mb-2" placeholder="Search by name or phone..." value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} />
             <select className="input" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-              <option value="">Select customer</option>
+              <option value="">Select customer *</option>
               {filteredCustomers.map((c) => <option key={c.id} value={c.id}>{c.name} — {c.phone}</option>)}
             </select>
+            {customerId && (
+              <p className="text-xs text-green-600 mt-1.5 font-medium">
+                ✓ {customers.find(c => c.id === customerId)?.name} selected
+              </p>
+            )}
           </div>
 
           {/* Line Items */}

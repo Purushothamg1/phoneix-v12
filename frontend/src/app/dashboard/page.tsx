@@ -2,7 +2,7 @@
 import AppShell from '@/components/layout/AppShell';
 import { StatCard } from '@/components/ui';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Users, Wrench, AlertTriangle, FileText, Package } from 'lucide-react';
+import { TrendingUp, Wrench, AlertTriangle, FileText, Plus } from 'lucide-react';
 import { formatCurrency, formatDate, STATUS_COLORS } from '@/lib/utils';
 import useSWR from 'swr';
 import api from '@/lib/api';
@@ -16,10 +16,18 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <div className="space-y-6">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-sm text-gray-500 mt-0.5">Overview of your business · auto-refreshes every minute</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link href="/invoices/new" className="btn-primary">
+              <Plus className="w-4 h-4" /> New Invoice
+            </Link>
+            <Link href="/repairs/new" className="btn-secondary">
+              <Plus className="w-4 h-4" /> New Repair
+            </Link>
           </div>
         </div>
 

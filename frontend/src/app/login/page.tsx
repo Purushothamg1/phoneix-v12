@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { getErrorMessage } from '@/lib/utils';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, Zap, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -48,8 +49,8 @@ export default function LoginPage() {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200">
-            <Zap className="w-9 h-9 text-white" />
+          <div className="flex items-center justify-center mb-4">
+            <Image src="/logo.png" alt="Phoneix Logo" width={80} height={80} className="rounded-2xl shadow-lg" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Phoneix Business Suite</h1>
           <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>

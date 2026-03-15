@@ -6,7 +6,7 @@ import { useState } from 'react';
 import AppShell from '@/components/layout/AppShell';
 import { StatusBadge, ConfirmDialog, Spinner, Modal, FormField, Select } from '@/components/ui';
 import { formatCurrency, formatDate, formatDateTime, getErrorMessage } from '@/lib/utils';
-import { FileDown, Send, XCircle, ArrowLeft, CreditCard, RefreshCw, ExternalLink } from 'lucide-react';
+import { FileDown, Send, XCircle, ArrowLeft, CreditCard, RefreshCw } from 'lucide-react';
 import api from '@/lib/api';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,7 +34,15 @@ export default function InvoiceDetailPage() {
   const [sharePreview, setSharePreview] = useState<ShareResult | null>(null);
 
   const canManage = user?.role === 'ADMIN' || user?.role === 'MANAGER';
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+
+  const triggerDownload = (url: string, filename: string) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'invoice.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   const handleCancel = async () => {
     setCancelling(true);
@@ -78,8 +86,13 @@ export default function InvoiceDetailPage() {
     } catch (err) { toast.error(getErrorMessage(err)); }
   };
 
-  const openWhatsApp = (url: string) => {
-    window.open(url, '_blank', 'noopener,noreferrer');
+  const openWhatsAppWithDownload = (whatsappUrl: string, pdfUrl: string, pdfName: string) => {
+    if (pdfUrl) {
+      triggerDownload(pdfUrl, pdfName);
+    }
+    setTimeout(() => {
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    }, 400);
   };
 
   if (isLoading) {
@@ -112,7 +125,12 @@ export default function InvoiceDetailPage() {
 
           {/* PDF */}
           {inv.pdfUrl ? (
-            <a href={`${apiBase}${inv.pdfUrl}`} target="_blank" rel="noreferrer" className="btn-secondary btn-sm" title={inv.pdfUrl.split('/').pop()}>
+            <a
+              href={inv.pdfUrl}
+              download={inv.pdfUrl.split('/').pop() || 'invoice.pdf'}
+              className="btn-secondary btn-sm"
+              title="Download Invoice PDF"
+            >
               <FileDown className="w-3.5 h-3.5" /> Download PDF
             </a>
           ) : (
@@ -292,32 +310,37 @@ export default function InvoiceDetailPage() {
             </div>
 
             {sharePreview.pdfUrl && (
-              <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+              <div className="flex items-center gap-3 bg-blue-50 rounded-lg p-3">
                 <FileDown className="w-4 h-4 text-blue-600 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{sharePreview.pdfName}</p>
-                  <p className="text-xs text-gray-500">PDF will be available — attach it after WhatsApp opens</p>
+                  <p className="text-xs text-gray-500">PDF downloads automatically when you open WhatsApp</p>
                 </div>
-                <a href={sharePreview.pdfUrl} target="_blank" rel="noreferrer" className="btn-secondary btn-sm flex-shrink-0">
-                  <ExternalLink className="w-3 h-3" /> Open
-                </a>
+                <button
+                  onClick={() => triggerDownload(sharePreview.pdfUrl, sharePreview.pdfName)}
+                  className="btn-secondary btn-sm flex-shrink-0"
+                >
+                  <FileDown className="w-3 h-3" /> Save
+                </button>
               </div>
             )}
 
-            <div className="bg-yellow-50 rounded-lg p-3 text-xs text-yellow-800">
-              <strong>How to share:</strong> Click "Open WhatsApp" to open a chat with this customer with the message pre-filled.
-              Then attach the PDF manually and hit send.
+            <div className="bg-green-50 rounded-lg p-3 text-xs text-green-800">
+              <strong>Tip:</strong> Clicking "Open WhatsApp" will automatically download the PDF to your device. Open WhatsApp, find the downloaded PDF in your files, attach it to the chat, and hit send.
             </div>
 
             <div className="flex gap-3 justify-end pt-2">
               <button onClick={() => setSharePreview(null)} className="btn-secondary">Close</button>
               {sharePreview.pdfUrl && (
-                <a href={sharePreview.pdfUrl} target="_blank" rel="noreferrer" className="btn-secondary">
+                <button
+                  onClick={() => triggerDownload(sharePreview.pdfUrl, sharePreview.pdfName)}
+                  className="btn-secondary"
+                >
                   <FileDown className="w-3.5 h-3.5" /> Download PDF
-                </a>
+                </button>
               )}
               <button
-                onClick={() => { openWhatsApp(sharePreview.whatsappUrl); setSharePreview(null); }}
+                onClick={() => { openWhatsAppWithDownload(sharePreview.whatsappUrl, sharePreview.pdfUrl, sharePreview.pdfName); setSharePreview(null); }}
                 className="btn-primary bg-green-600 hover:bg-green-700 focus:ring-green-500"
               >
                 <Send className="w-3.5 h-3.5" /> Open WhatsApp
