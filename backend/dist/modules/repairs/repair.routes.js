@@ -34,9 +34,6 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.repairRouter = void 0;
-// ============================================================
-// REPAIR ROUTES
-// ============================================================
 const express_1 = require("express");
 const celebrate_1 = require("celebrate");
 const auth_middleware_1 = require("../../shared/middleware/auth.middleware");
@@ -106,16 +103,47 @@ exports.repairRouter.delete('/:id', (0, auth_middleware_1.authorize)('ADMIN'), a
         next(e);
     }
 });
-// Regenerate PDF for an existing repair job
-exports.repairRouter.post('/:id/regenerate-pdf', async (req, res, next) => {
+exports.repairRouter.post('/:id/create-invoice', (0, auth_middleware_1.authorize)('ADMIN', 'MANAGER', 'STAFF'), async (req, res, next) => {
     try {
-        const { pdfService } = await Promise.resolve().then(() => __importStar(require('../pdf/pdf.service')));
-        const pdfUrl = await pdfService.generateRepairPdf(req.params.id);
-        await require('../../config/database').prisma.repairJob.update({
+        const { prisma } = await Promise.resolve().then(() => __importStar(require('../../config/database')));
+        const { invoiceService } = await Promise.resolve().then(() => __importStar(require('../invoices/invoice.service')));
+        const { ValidationError, NotFoundError } = await Promise.resolve().then(() => __importStar(require('../../shared/errors/AppError')));
+        const repair = await prisma.repairJob.findUnique({
             where: { id: req.params.id },
-            data: { pdfUrl },
+            include: { customer: true, parts: { include: { product: true } } },
         });
-        res.json({ pdfUrl });
+        if (!repair)
+            throw new NotFoundError('Repair job');
+        if (!['READY', 'DELIVERED'].includes(repair.status)) {
+            throw new ValidationError('Can only create invoice for repairs with status READY or DELIVERED');
+        }
+        const serviceAmount = Number(repair.finalCost || repair.estimatedCost || 0);
+        const items = [];
+        items.push({
+            description: `Repair Service – ${repair.brand} ${repair.model} (${repair.deviceType}) [${repair.jobId}]`,
+            qty: 1,
+            unitPrice: serviceAmount,
+            tax: 0,
+        });
+        for (const part of repair.parts) {
+            items.push({
+                productId: part.productId,
+                description: `${part.product.name} (Part)`,
+                qty: part.qty,
+                unitPrice: Number(part.cost),
+                tax: 0,
+            });
+        }
+        const invoice = await invoiceService.create({
+            customerId: repair.customerId,
+            discount: 0,
+            items,
+        });
+        await prisma.repairJob.update({
+            where: { id: req.params.id },
+            data: { status: 'DELIVERED' },
+        });
+        res.status(201).json(invoice);
     }
     catch (e) {
         next(e);

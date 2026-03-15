@@ -56,6 +56,7 @@ app.use((0, helmet_1.default)({
     noSniff: true,
     xssFilter: true,
 }));
+app.use('/api/uploads/pdfs', express_1.default.static(path_1.default.join(process.cwd(), 'uploads/pdfs')));
 // ── CORS ──────────────────────────────────────────────────────
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
     .split(',').map((o) => o.trim());

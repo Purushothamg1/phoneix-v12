@@ -1,6 +1,4 @@
-// ============================================================
-// INVOICE ROUTES
-// ============================================================
+
 import { Router } from 'express';
 import { celebrate, Joi, Segments } from 'celebrate';
 import { authenticate, authorize } from '../../shared/middleware/auth.middleware';
@@ -55,17 +53,4 @@ invoiceRouter.put(
 invoiceRouter.post('/:id/cancel', authorize('ADMIN', 'MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
   try { res.json(await invoiceService.cancel(req.params.id)); }
   catch (e) { next(e); }
-});
-
-// Regenerate PDF for an existing invoice
-invoiceRouter.post('/:id/regenerate-pdf', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { pdfService } = await import('../pdf/pdf.service');
-    const pdfUrl = await pdfService.generateInvoicePdf(req.params.id);
-    await require('../../config/database').prisma.invoice.update({
-      where: { id: req.params.id },
-      data: { pdfUrl },
-    });
-    res.json({ pdfUrl });
-  } catch (e) { next(e); }
 });

@@ -1,10 +1,10 @@
+
 import { prisma } from '../../config/database';
 import { NotFoundError, ValidationError } from '../../shared/errors/AppError';
 import { getPaginationParams, buildPaginatedResult } from '../../shared/utils/pagination';
-import { pdfService } from '../pdf/pdf.service';
+import { generatePdf } from '../../shared/utils/pdf.util';
 
-// FIX: race-condition-safe job ID (inside transaction)
-async function generateJobId(tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]): Promise<string> {
+async function generateJobId(tx: any): Promise<string> {
   const count = await tx.repairJob.count();
   const candidate = `JOB-${String(count + 1).padStart(5, '0')}`;
   const existing = await tx.repairJob.findUnique({ where: { jobId: candidate } });
@@ -60,7 +60,6 @@ export const repairService = {
 
     const { parts = [], ...jobData } = data;
 
-    // Validate parts stock before transaction
     for (const part of parts) {
       const product = await prisma.product.findUnique({ where: { id: part.productId } });
       if (!product) throw new NotFoundError(`Product (${part.productId})`);
@@ -89,7 +88,6 @@ export const repairService = {
         },
       });
 
-      // Deduct stock for parts
       for (const part of parts) {
         await tx.product.update({
           where: { id: part.productId },
@@ -107,14 +105,27 @@ export const repairService = {
       return job;
     });
 
-    // Generate PDF outside transaction
     try {
-      const pdfUrl = await pdfService.generateRepairPdf(repair.id);
-      await prisma.repairJob.update({ where: { id: repair.id }, data: { pdfUrl } });
-      return { ...repair, pdfUrl };
-    } catch {
-      return repair;
-    }
+        const pdfUrl = await generatePdf((doc) => {
+          doc.fontSize(25).text(`Repair Job #${repair.jobId}`, { align: 'center' });
+          doc.fontSize(12).text(`Date: ${new Date().toLocaleDateString()}`);
+          doc.moveDown();
+          doc.text(`Customer: ${repair.customer.name}`);
+          doc.text(`Phone: ${repair.customer.phone}`);
+          doc.moveDown();
+          doc.text('Device Information:');
+          doc.text(`- Type: ${repair.deviceType}`);
+          doc.text(`- Brand: ${repair.brand}`);
+          doc.text(`- Model: ${repair.model}`);
+          if (repair.serialNumber) doc.text(`- Serial: ${repair.serialNumber}`);
+        }, `repair-${repair.jobId}.pdf`);
+        
+        await prisma.repairJob.update({ where: { id: repair.id }, data: { pdfUrl } });
+        return { ...repair, pdfUrl };
+      } catch (error) {
+        console.error('Error generating or saving PDF:', error);
+        return repair;
+      }
   },
 
   async getById(id: string) {
@@ -127,6 +138,9 @@ export const repairService = {
       },
     });
     if (!repair) throw new NotFoundError('Repair job');
+    if (repair.pdfUrl && !repair.pdfUrl.startsWith('/api/uploads/pdfs')) {
+        repair.pdfUrl = `/api/uploads/pdfs/repair-${repair.jobId}.pdf`;
+    }
     return repair;
   },
 
@@ -146,7 +160,7 @@ export const repairService = {
     if (data.estimatedCost !== undefined) updateData.estimatedCost = data.estimatedCost;
     return prisma.repairJob.update({
       where: { id },
-      data: updateData as Parameters<typeof prisma.repairJob.update>[0]['data'],
+      data: updateData as any,
       include: {
         customer: true,
         technician: { select: { id: true, name: true } },
@@ -161,7 +175,6 @@ export const repairService = {
       throw new ValidationError('Only repairs in RECEIVED or DIAGNOSING status can be deleted');
     }
 
-    // Restore stock for parts before deleting
     await prisma.$transaction(async (tx) => {
       for (const part of repair.parts) {
         await tx.product.update({

@@ -1,6 +1,4 @@
-// ============================================================
-// REPAIR ROUTES
-// ============================================================
+
 import { Router } from 'express';
 import { celebrate, Joi, Segments } from 'celebrate';
 import { authenticate, authorize } from '../../shared/middleware/auth.middleware';
@@ -61,20 +59,6 @@ repairRouter.delete('/:id', authorize('ADMIN'), async (req: Request, res: Respon
   catch (e) { next(e); }
 });
 
-// Regenerate PDF for an existing repair job
-repairRouter.post('/:id/regenerate-pdf', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { pdfService } = await import('../pdf/pdf.service');
-    const pdfUrl = await pdfService.generateRepairPdf(req.params.id);
-    await require('../../config/database').prisma.repairJob.update({
-      where: { id: req.params.id },
-      data: { pdfUrl },
-    });
-    res.json({ pdfUrl });
-  } catch (e) { next(e); }
-});
-
-// Create invoice from completed repair job
 repairRouter.post('/:id/create-invoice', authorize('ADMIN', 'MANAGER', 'STAFF'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { prisma } = await import('../../config/database');

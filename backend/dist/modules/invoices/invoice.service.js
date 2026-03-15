@@ -4,14 +4,12 @@ exports.invoiceService = void 0;
 const database_1 = require("../../config/database");
 const AppError_1 = require("../../shared/errors/AppError");
 const pagination_1 = require("../../shared/utils/pagination");
-const pdf_service_1 = require("../pdf/pdf.service");
-// FIX: Race-condition-safe invoice number using DB advisory lock
+const pdf_util_1 = require("../../shared/utils/pdf.util");
 async function generateInvoiceNumber(tx) {
     const setting = await tx.setting.findUnique({ where: { key: 'invoice_prefix' } });
     const prefix = setting?.value || 'INV';
     const count = await tx.invoice.count();
     const candidate = `${prefix}-${String(count + 1).padStart(5, '0')}`;
-    // Ensure uniqueness: if number already exists (concurrent creation), increment
     const existing = await tx.invoice.findUnique({ where: { number: candidate } });
     if (existing) {
         return `${prefix}-${String(count + 2).padStart(5, '0')}-${Date.now().toString(36).slice(-4)}`;
@@ -29,10 +27,13 @@ exports.invoiceService = {
         if (query.search) {
             where.OR = [
                 { number: { contains: query.search, mode: 'insensitive' } },
-                { customer: { name: { contains: query.search, mode: 'insensitive' } } },
+                {
+                    customer: {
+                        name: { contains: query.search, mode: 'insensitive' },
+                    },
+                },
             ];
         }
-        // Date range filter
         if (query.from || query.to) {
             const dateFilter = {};
             if (query.from)
@@ -46,7 +47,9 @@ exports.invoiceService = {
         }
         const [data, total] = await Promise.all([
             database_1.prisma.invoice.findMany({
-                where, skip, take: limit,
+                where,
+                skip,
+                take: limit,
                 orderBy: { createdAt: 'desc' },
                 include: {
                     customer: { select: { id: true, name: true, phone: true } },
@@ -64,7 +67,6 @@ exports.invoiceService = {
             throw new AppError_1.NotFoundError('Customer');
         if (!data.items?.length)
             throw new AppError_1.ValidationError('Invoice must have at least one item');
-        // Validate stock availability up-front before opening transaction
         for (const item of data.items) {
             if (item.productId) {
                 const product = await database_1.prisma.product.findUnique({ where: { id: item.productId } });
@@ -99,7 +101,6 @@ exports.invoiceService = {
         if (totalAmount < 0)
             throw new AppError_1.ValidationError('Discount cannot exceed the invoice total');
         const invoice = await database_1.prisma.$transaction(async (tx) => {
-            // FIX: generate number inside transaction to reduce race window
             const number = await generateInvoiceNumber(tx);
             const created = await tx.invoice.create({
                 data: {
@@ -113,7 +114,6 @@ exports.invoiceService = {
                 },
                 include: { items: true, customer: true, payments: true },
             });
-            // Deduct stock and record movements
             for (const item of data.items) {
                 if (item.productId) {
                     await tx.product.update({
@@ -132,13 +132,24 @@ exports.invoiceService = {
             }
             return created;
         });
-        // Generate PDF outside transaction (non-critical)
         try {
-            const pdfUrl = await pdf_service_1.pdfService.generateInvoicePdf(invoice.id);
+            const pdfUrl = await (0, pdf_util_1.generatePdf)((doc) => {
+                doc.fontSize(25).text(`Invoice #${invoice.number}`, { align: 'center' });
+                doc.fontSize(12).text(`Date: ${new Date().toLocaleDateString()}`);
+                doc.moveDown();
+                doc.text(`Customer: ${invoice.customer.name}`);
+                doc.text(`Phone: ${invoice.customer.phone}`);
+                doc.moveDown();
+                doc.text('Items:');
+                invoice.items.forEach((item) => {
+                    doc.text(`- ${item.description} (Qty: ${item.qty}, Price: ${item.unitPrice})`);
+                });
+            }, `invoice-${invoice.number}.pdf`);
             await database_1.prisma.invoice.update({ where: { id: invoice.id }, data: { pdfUrl } });
             return { ...invoice, pdfUrl };
         }
-        catch {
+        catch (error) {
+            console.error('Error generating or saving PDF:', error);
             return invoice;
         }
     },
@@ -153,6 +164,10 @@ exports.invoiceService = {
         });
         if (!invoice)
             throw new AppError_1.NotFoundError('Invoice');
+        // Normalize PDF URL before returning
+        if (invoice.pdfUrl && !invoice.pdfUrl.startsWith('/api/uploads/pdfs')) {
+            invoice.pdfUrl = `/api/uploads/pdfs/invoice-${invoice.number}.pdf`;
+        }
         return invoice;
     },
     async update(id, data) {
@@ -175,7 +190,6 @@ exports.invoiceService = {
             throw new AppError_1.ValidationError('Invoice already cancelled');
         await database_1.prisma.$transaction(async (tx) => {
             await tx.invoice.update({ where: { id }, data: { status: 'CANCELLED' } });
-            // Restore stock
             for (const item of invoice.items) {
                 if (item.productId) {
                     await tx.product.update({
@@ -192,7 +206,6 @@ exports.invoiceService = {
                     });
                 }
             }
-            // Mark all non-refunded payments as refunded
             await tx.payment.updateMany({
                 where: { invoiceId: id, refunded: false },
                 data: { refunded: true },
