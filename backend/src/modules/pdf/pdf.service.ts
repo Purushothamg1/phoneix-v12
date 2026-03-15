@@ -226,7 +226,7 @@ export const pdfService = {
       doc.end();
       stream.on('finish', () => {
         logger.info(`PDF generated: ${filename}`);
-        resolve(`/uploads/pdfs/${filename}`);
+        resolve(`/api/uploads/pdfs/${filename}`);
       });
       stream.on('error', (err) => {
         logger.error(`PDF generation failed: ${filename}`, err);
@@ -400,7 +400,7 @@ export const pdfService = {
       doc.end();
       stream.on('finish', () => {
         logger.info(`PDF generated: ${filename}`);
-        resolve(`/uploads/pdfs/${filename}`);
+        resolve(`/api/uploads/pdfs/${filename}`);
       });
       stream.on('error', reject);
     });
