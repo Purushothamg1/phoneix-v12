@@ -55,7 +55,7 @@ app.use(helmet({
   noSniff: true,
   xssFilter: true,
 }));
-app.use('/api/uploads/pdfs', express.static('uploads/pdfs'));
+app.use('/api/uploads/pdfs', express.static('backend/uploads/pdfs'));
 
 // ── CORS ──────────────────────────────────────────────────────
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
